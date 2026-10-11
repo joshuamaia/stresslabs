@@ -1,0 +1,80 @@
+@use '@angular/material' as mat;
+
+// Paleta (dark) validada para CVD: séries categóricas em ordem fixa e cores de status reservadas.
+:root {
+  color-scheme: dark;
+  --bg: #111110;
+  --surface: #1a1a19;
+  --surface-2: #222220;
+  --border: #2e2e2b;
+  --text: #f0efec;
+  --text-2: #c3c2b7;
+  --muted: #8c8b83;
+
+  --series-1: #3987e5; // azul (informação / série principal)
+  --series-2: #d95926; // laranja
+  --series-3: #199e70; // aqua
+  --series-4: #9085e9; // violeta
+  --reference: #6b6a64; // linhas de referência (meta de RPS)
+
+  --good: #0ca30c; // sucesso
+  --warning: #fab219; // alerta / lentidão
+  --serious: #ec835a; // bloqueios (429)
+  --critical: #d03b3b; // erros
+  --info: #3987e5;
+
+  --radius: 12px;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+html {
+  @include mat.theme((
+    color: (theme-type: dark, primary: mat.$azure-palette, tertiary: mat.$orange-palette),
+    typography: Inter,
+    density: 0,
+  ));
+  @include mat.sidenav-overrides((content-background-color: var(--bg), container-background-color: var(--surface)));
+  @include mat.table-overrides((background-color: transparent));
+  @include mat.card-overrides((outlined-container-color: var(--surface), outlined-outline-color: var(--border)));
+}
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400; vertical-align: middle; }
+
+// Layout utilitário compartilhado pelas páginas
+.page { padding: 24px; max-width: 1600px; margin: 0 auto; box-sizing: border-box; }
+.page-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  margin-bottom: 20px;
+  h1 { font-size: 1.5rem; font-weight: 600; margin: 0; }
+  p { margin: 4px 0 0; color: var(--text-2); font-size: .9rem; }
+}
+.panel {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px; box-sizing: border-box; min-width: 0;
+  h2 { font-size: .95rem; font-weight: 600; margin: 0 0 12px; color: var(--text); }
+  .hint { color: var(--muted); font-size: .8rem; margin: -6px 0 10px; }
+}
+.cards-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+.charts-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr)); }
+.mono { font-family: var(--mono); }
+.muted { color: var(--muted); }
+.empty-state {
+  display: grid; place-items: center; gap: 8px; padding: 48px 16px; color: var(--muted); text-align: center;
+  .material-symbols-outlined { font-size: 40px; }
+}
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.full-width { width: 100%; }
+
+@media (max-width: 600px) {
+  .page { padding: 16px; }
+}
