@@ -1,0 +1,98 @@
+name: stresslabs
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-stresslabs}
+      POSTGRES_USER: ${POSTGRES_USER:-stresslabs}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stresslabs}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [stresslabs-net]
+
+  api-backend:
+    build:
+      context: ./stresslabsservice
+      additional_contexts:
+        certs: ./certs
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-stresslabs}
+      DB_USERNAME: ${POSTGRES_USER:-stresslabs}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-stresslabs}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-20}
+      LOAD_GENERATOR_URL: http://load-generator:8081
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-change-me-local-token}
+      ADMIN_LOCAL_ONLY: "true"
+      CORS_ALLOWED_ORIGINS: http://localhost:${WEB_PORT:-4200}
+      LIMIT_MAX_REQUESTS: ${LIMIT_MAX_REQUESTS:-200000}
+      LIMIT_MAX_CONCURRENCY: ${LIMIT_MAX_CONCURRENCY:-500}
+      LIMIT_MAX_DURATION_SECONDS: ${LIMIT_MAX_DURATION_SECONDS:-300}
+      LIMIT_MAX_RPS: ${LIMIT_MAX_RPS:-5000}
+      JAVA_OPTS: -XX:MaxRAMPercentage=75
+    ports:
+      - "127.0.0.1:${API_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "${API_CPUS:-2}"
+          memory: 1g
+    networks: [stresslabs-net]
+
+  load-generator:
+    build:
+      context: ./stresslabsloadgen
+      additional_contexts:
+        certs: ./certs
+    environment:
+      # O gerador acessa a API pelo nome do serviço Docker (nunca localhost)
+      TARGET_BASE_URL: http://api-backend:8080
+      ALLOWED_PATH_PREFIXES: /api/target/
+      BACKEND_URL: http://api-backend:8080
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-change-me-local-token}
+      LIMIT_MAX_REQUESTS: ${LIMIT_MAX_REQUESTS:-200000}
+      LIMIT_MAX_CONCURRENCY: ${LIMIT_MAX_CONCURRENCY:-500}
+      LIMIT_MAX_DURATION_SECONDS: ${LIMIT_MAX_DURATION_SECONDS:-300}
+      LIMIT_MAX_RPS: ${LIMIT_MAX_RPS:-5000}
+      JAVA_OPTS: -XX:MaxRAMPercentage=75
+    # Sem porta publicada: comandado apenas pelo backend dentro da rede Docker
+    depends_on:
+      api-backend:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "${LOADGEN_CPUS:-2}"
+          memory: 1g
+    networks: [stresslabs-net]
+
+  web-dashboard:
+    build:
+      context: ./stresslabsweb
+      additional_contexts:
+        certs: ./certs
+    ports:
+      - "127.0.0.1:${WEB_PORT:-4200}:80"
+    depends_on:
+      api-backend:
+        condition: service_healthy
+      load-generator:
+        condition: service_healthy
+    networks: [stresslabs-net]
+
+networks:
+  stresslabs-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
